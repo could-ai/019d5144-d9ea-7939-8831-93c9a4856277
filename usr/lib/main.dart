@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,18 +30,16 @@ class MyApp extends StatelessWidget {
 class TicketScreen extends StatelessWidget {
   const TicketScreen({super.key});
 
+  // Constants based on user request
+  static const String ticketNumber = "482"; // 3 numerical digits
+  static const String pnr = "935"; // 3 numerical digits
+  static const double ticketPrice = 987.0;
+  static const double cancellationFeePercentage = 0.15; // 15% cancellation fee
+  static const double cancellationFee = ticketPrice * cancellationFeePercentage;
+  static const double refundAmount = ticketPrice - cancellationFee;
+
   @override
   Widget build(BuildContext context) {
-    // Constants based on user request
-    const String ticketNumber = "482"; // 3 numerical digits
-    const String pnr = "935"; // 3 numerical digits
-    const double ticketPrice = 987.0;
-    
-    // Calculating cancellation amounts based on the 987 ticket price
-    const double cancellationFeePercentage = 0.15; // 15% cancellation fee
-    const double cancellationFee = ticketPrice * cancellationFeePercentage;
-    const double refundAmount = ticketPrice - cancellationFee;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ticket Details', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -116,6 +117,16 @@ class TicketScreen extends StatelessWidget {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PdfPreviewScreen()),
+          );
+        },
+        icon: const Icon(Icons.picture_as_pdf),
+        label: const Text('View All Pages (PDF)'),
+      ),
     );
   }
 
@@ -166,6 +177,152 @@ class TicketScreen extends StatelessWidget {
           )
         ),
       ],
+    );
+  }
+}
+
+class PdfPreviewScreen extends StatelessWidget {
+  const PdfPreviewScreen({super.key});
+
+  Future<pw.Document> _generatePdf() async {
+    final pdf = pw.Document();
+
+    // Page 1: Boarding Pass
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Text('BOARDING PASS', style: pw.TextStyle(fontSize: 32, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 40),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                  children: [
+                    pw.Column(
+                      children: [
+                        pw.Text('TICKET NO', style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey)),
+                        pw.Text(TicketScreen.ticketNumber, style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
+                      ]
+                    ),
+                    pw.Column(
+                      children: [
+                        pw.Text('PNR', style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey)),
+                        pw.Text(TicketScreen.pnr, style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
+                      ]
+                    ),
+                  ]
+                ),
+                pw.SizedBox(height: 40),
+                pw.Text('Page 1 of 3', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    // Page 2: Payment & Cancellation
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Text('PAYMENT & CANCELLATION', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 40),
+                pw.Container(
+                  width: 400,
+                  child: pw.Column(
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Ticket Price:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('\$${TicketScreen.ticketPrice.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                        ]
+                      ),
+                      pw.SizedBox(height: 20),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Cancellation Fee (15%):', style: const pw.TextStyle(fontSize: 16)),
+                          pw.Text('-\$${TicketScreen.cancellationFee.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 16, color: PdfColors.red)),
+                        ]
+                      ),
+                      pw.Divider(height: 40, thickness: 2),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Refund on Cancellation:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('\$${TicketScreen.refundAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
+                        ]
+                      ),
+                    ]
+                  )
+                ),
+                pw.SizedBox(height: 40),
+                pw.Text('Page 2 of 3', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    // Page 3: Terms & Conditions
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(40),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('TERMS & CONDITIONS', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 30),
+                pw.Text('1. Check-in counters close 45 minutes prior to scheduled departure time.', style: const pw.TextStyle(fontSize: 14)),
+                pw.SizedBox(height: 10),
+                pw.Text('2. Passengers must carry a valid photo ID for verification.', style: const pw.TextStyle(fontSize: 14)),
+                pw.SizedBox(height: 10),
+                pw.Text('3. Standard baggage allowance is 15kg for check-in and 7kg for cabin.', style: const pw.TextStyle(fontSize: 14)),
+                pw.SizedBox(height: 10),
+                pw.Text('4. Cancellation requests must be submitted at least 24 hours before departure to be eligible for the standard refund policy.', style: const pw.TextStyle(fontSize: 14)),
+                pw.SizedBox(height: 10),
+                pw.Text('5. The 15% cancellation fee is calculated based on the base ticket price of \$${TicketScreen.ticketPrice.toStringAsFixed(2)}.', style: const pw.TextStyle(fontSize: 14)),
+                pw.Spacer(),
+                pw.Center(child: pw.Text('Page 3 of 3', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey))),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    return pdf;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('PDF Preview (All Pages)'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: PdfPreview(
+        build: (format) async {
+          final doc = await _generatePdf();
+          return doc.save();
+        },
+        allowPrinting: true,
+        allowSharing: true,
+        canChangeOrientation: false,
+        canChangePageFormat: false,
+      ),
     );
   }
 }
